@@ -2,23 +2,15 @@ package com.github.tvbox.osc.ui.activity;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Rect;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.text.Html;
 import android.text.TextUtils;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.fragment.app.FragmentContainerView;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -36,10 +28,8 @@ import com.github.tvbox.osc.picasso.RoundTransformation;
 import com.github.tvbox.osc.ui.adapter.SeriesAdapter;
 import com.github.tvbox.osc.ui.adapter.SeriesFlagAdapter;
 import com.github.tvbox.osc.ui.dialog.QuickSearchDialog;
-import com.github.tvbox.osc.ui.fragment.PlayFragment;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
-import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.google.gson.Gson;
@@ -48,7 +38,6 @@ import com.google.gson.JsonElement;
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.callback.AbsCallback;
 import com.lzy.okgo.model.Response;
-import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
@@ -74,10 +63,6 @@ import me.jessyan.autosize.utils.AutoSizeUtils;
  */
 public class DetailActivity extends BaseActivity {
     private LinearLayout llLayout;
-    private FragmentContainerView llPlayerFragmentContainer;
-    private View llPlayerFragmentContainerBlock;
-    private View llPlayerPlace;
-    private PlayFragment playFragment = null;
     private ImageView ivThumb;
     private TextView tvName;
     private TextView tvYear;
@@ -104,6 +89,7 @@ public class DetailActivity extends BaseActivity {
     public String sourceKey;
     boolean seriesSelect = false;
     private View seriesFlagFocus = null;
+    private int lastSeriesFocusIndex = -1;
 
     @Override
     protected int getLayoutResID() {
@@ -120,12 +106,7 @@ public class DetailActivity extends BaseActivity {
 
     private void initView() {
         llLayout = findViewById(R.id.llLayout);
-        llPlayerPlace = findViewById(R.id.previewPlayerPlace);
-        llPlayerFragmentContainer = findViewById(R.id.previewPlayer);
-        llPlayerFragmentContainerBlock = findViewById(R.id.previewPlayerBlock);
         ivThumb = findViewById(R.id.ivThumb);
-        llPlayerPlace.setVisibility(showPreview ? View.VISIBLE : View.GONE);
-        ivThumb.setVisibility(!showPreview ? View.VISIBLE : View.GONE);
         tvName = findViewById(R.id.tvName);
         tvYear = findViewById(R.id.tvYear);
         tvSite = findViewById(R.id.tvSite);
@@ -150,13 +131,6 @@ public class DetailActivity extends BaseActivity {
         mGridViewFlag.setLayoutManager(new V7LinearLayoutManager(this.mContext, 0, false));
         seriesFlagAdapter = new SeriesFlagAdapter();
         mGridViewFlag.setAdapter(seriesFlagAdapter);
-        if (showPreview) {
-            playFragment = new PlayFragment();
-            getSupportFragmentManager().beginTransaction().add(R.id.previewPlayer, playFragment).commit();
-            getSupportFragmentManager().beginTransaction().show(playFragment).commitAllowingStateLoss();
-            tvPlay.setText("Expand");
-        }
-        tvPlay.requestFocus();
         tvSort.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -172,11 +146,7 @@ public class DetailActivity extends BaseActivity {
             @Override
             public void onClick(View v) {
                 FastClickCheckUtil.check(v);
-                if (showPreview) {
-                    toggleFullPreview();
-                } else {
-                    jumpToPlay();
-                }
+                jumpToPlay();
             }
         });
         tvQuickSearch.setOnClickListener(new View.OnClickListener() {
@@ -213,16 +183,8 @@ public class DetailActivity extends BaseActivity {
         tvCollect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String text = tvCollect.getText().toString();
-                if ("☆ Favorite".equals(text)) {
-                    RoomDataManger.insertVodCollect(sourceKey, vodInfo);
-                    Toast.makeText(DetailActivity.this, "Added to Favorite", Toast.LENGTH_SHORT).show();
-                    tvCollect.setText("★ Favorite");
-                } else {
-                    RoomDataManger.deleteVodCollect(sourceKey, vodInfo);
-                    Toast.makeText(DetailActivity.this, "Removed from Favorite", Toast.LENGTH_SHORT).show();
-                    tvCollect.setText("☆ Favorite");
-                }
+                RoomDataManger.insertVodCollect(sourceKey, vodInfo);
+                Toast.makeText(DetailActivity.this, "已加入收藏夹", Toast.LENGTH_SHORT).show();
             }
         });
         mGridView.setOnItemListener(new TvRecyclerView.OnItemListener() {
@@ -282,20 +244,17 @@ public class DetailActivity extends BaseActivity {
             public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
                 FastClickCheckUtil.check(view);
                 if (vodInfo != null && vodInfo.seriesMap.get(vodInfo.playFlag).size() > 0) {
-                    boolean reload = false;
                     if (vodInfo.playIndex != position) {
                         seriesAdapter.getData().get(vodInfo.playIndex).selected = false;
                         seriesAdapter.notifyItemChanged(vodInfo.playIndex);
                         seriesAdapter.getData().get(position).selected = true;
                         seriesAdapter.notifyItemChanged(position);
                         vodInfo.playIndex = position;
-                        reload = true;
+                        lastSeriesFocusIndex = position;
                     }
-                    seriesAdapter.getData().get(vodInfo.playIndex).selected = true;
-                    seriesAdapter.notifyItemChanged(vodInfo.playIndex);
-                    //选集全屏 想选集不全屏的注释下面一行
-                    if (showPreview && !fullWindows) toggleFullPreview();
-                    if (reload || !showPreview) jumpToPlay();
+                    seriesAdapter.getData().get(lastSeriesFocusIndex).selected = true;
+                    seriesAdapter.notifyItemChanged(lastSeriesFocusIndex);
+                    jumpToPlay();
                 }
             }
         });
@@ -311,11 +270,7 @@ public class DetailActivity extends BaseActivity {
             insertVod(sourceKey, vodInfo);
             bundle.putString("sourceKey", sourceKey);
             bundle.putSerializable("VodInfo", vodInfo);
-            if (showPreview) {
-                playFragment.setData(bundle);
-            } else {
-                jumpActivity(PlayActivity.class, bundle);
-            }
+            jumpActivity(PlayActivity.class, bundle);
         }
     }
 
@@ -428,11 +383,6 @@ public class DetailActivity extends BaseActivity {
                         mGridViewFlag.scrollToPosition(flagScrollTo);
 
                         refreshList();
-                        if (showPreview) {
-                            jumpToPlay();
-                            llPlayerFragmentContainer.setVisibility(View.VISIBLE);
-                            llPlayerFragmentContainerBlock.setVisibility(View.VISIBLE);
-                        }
                         // startQuickSearch();
                     } else {
                         mGridViewFlag.setVisibility(View.GONE);
@@ -442,8 +392,6 @@ public class DetailActivity extends BaseActivity {
                     }
                 } else {
                     showEmpty();
-                    llPlayerFragmentContainer.setVisibility(View.GONE);
-                    llPlayerFragmentContainerBlock.setVisibility(View.GONE);
                 }
             }
         });
@@ -470,13 +418,6 @@ public class DetailActivity extends BaseActivity {
             sourceKey = key;
             showLoading();
             sourceViewModel.getDetail(sourceKey, vodId);
-
-            boolean isVodCollect = RoomDataManger.isVodCollect(sourceKey, vodId);
-            if (isVodCollect) {
-                tvCollect.setText("★ Favorite");
-            } else {
-                tvCollect.setText("☆ Favorite");
-            }
         }
     }
 
@@ -486,16 +427,19 @@ public class DetailActivity extends BaseActivity {
             if (event.obj != null) {
                 if (event.obj instanceof Integer) {
                     int index = (int) event.obj;
-                    // if (index != vodInfo.playIndex) {
-                    seriesAdapter.getData().get(vodInfo.playIndex).selected = false;
-                    seriesAdapter.notifyItemChanged(vodInfo.playIndex);
-                    seriesAdapter.getData().get(index).selected = true;
-                    seriesAdapter.notifyItemChanged(index);
-                    mGridView.setSelection(index);
-                    vodInfo.playIndex = index;
-                    //保存历史
-                    insertVod(sourceKey, vodInfo);
-                    // }
+                    if (index != lastSeriesFocusIndex) {
+                        if(lastSeriesFocusIndex >= 0) {
+                            seriesAdapter.getData().get(lastSeriesFocusIndex).selected = false;
+                            seriesAdapter.notifyItemChanged(lastSeriesFocusIndex);
+                        }
+                        lastSeriesFocusIndex = index;
+                        seriesAdapter.getData().get(index).selected = true;
+                        seriesAdapter.notifyItemChanged(index);
+                        mGridView.setSelection(index);
+                        vodInfo.playIndex = index;
+                        //保存历史
+                        insertVod(sourceKey, vodInfo);
+                    }
                 } else if (event.obj instanceof JSONObject) {
                     vodInfo.playerCfg = ((JSONObject) event.obj).toString();
                     //保存历史
@@ -655,42 +599,8 @@ public class DetailActivity extends BaseActivity {
         EventBus.getDefault().unregister(this);
     }
 
-    // takagen99
-    public boolean supportsPiPMode() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
-    }
-
-    @Override
-    public void onUserLeaveHint() {
-        if (supportsPiPMode() && showPreview) {
-            if (fullWindows) {
-                enterPictureInPictureMode();
-            } else {
-                toggleFullPreview();
-                enterPictureInPictureMode();
-            }
-        }
-    }
-
     @Override
     public void onBackPressed() {
-        if (fullWindows) {
-            if (playFragment.onBackPressed())
-                return;
-            toggleFullPreview();
-            // takagen99 : Show Nav Bar
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                int uiOptions = getWindow().getDecorView().getSystemUiVisibility();
-                uiOptions &= ~View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-                uiOptions &= ~View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
-                uiOptions &= ~View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
-                uiOptions &= ~View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
-                uiOptions &= ~View.SYSTEM_UI_FLAG_FULLSCREEN;
-                uiOptions &= ~View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-                getWindow().getDecorView().setSystemUiVisibility(uiOptions);
-            }
-            return;
-        }
         if (seriesSelect) {
             if (seriesFlagFocus != null && !seriesFlagFocus.isFocused()) {
                 seriesFlagFocus.requestFocus();
@@ -698,77 +608,5 @@ public class DetailActivity extends BaseActivity {
             }
         }
         super.onBackPressed();
-    }
-
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event != null && playFragment != null && fullWindows) {
-            if (playFragment.dispatchKeyEvent(event)) {
-                return true;
-            }
-        }
-        return super.dispatchKeyEvent(event);
-    }
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (showPreview && !fullWindows) {
-            Rect editTextRect = new Rect();
-            llPlayerFragmentContainerBlock.getHitRect(editTextRect);
-            if (editTextRect.contains((int) ev.getX(), (int) ev.getY())) {
-                return true;
-            }
-        }
-        return super.dispatchTouchEvent(ev);
-    }
-
-    // preview : true 开启 false 关闭
-    boolean showPreview = Hawk.get(HawkConfig.SHOW_PREVIEW, true);
-    boolean fullWindows = false;
-    ViewGroup.LayoutParams windowsPreview = null;
-    ViewGroup.LayoutParams windowsFull = null;
-    ViewGroup playerParent = null;
-    View playerRoot = null;
-    ViewGroup llLayoutParent = null;
-
-    void toggleFullPreview() {
-        if (windowsPreview == null) {
-            windowsPreview = llPlayerFragmentContainer.getLayoutParams();
-        }
-        if (windowsFull == null) {
-            windowsFull = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        }
-        if (playerRoot == null)
-            playerRoot = (View) llPlayerFragmentContainer.findViewById(R.id.mVideoView).getParent();
-
-        if (playerParent == null) {
-            playerParent = (ViewGroup) playerRoot.getParent();
-        }
-        if (llLayoutParent == null)
-            llLayoutParent = (ViewGroup) llLayout.getParent();
-
-        fullWindows = !fullWindows;
-        // llPlayerFragmentContainer.setLayoutParams(fullWindows ? windowsFull : windowsPreview);
-        llPlayerFragmentContainerBlock.setVisibility(fullWindows ? View.GONE : View.VISIBLE);
-        if (fullWindows) {
-            playerParent.removeView(playerRoot);
-            ((ViewGroup) getWindow().getDecorView()).addView(playerRoot);
-            llLayoutParent.removeView(llLayout);
-            // takagen99 : Hide only when video playing
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                int uiOptions = getWindow().getDecorView().getSystemUiVisibility();
-                uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-                uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
-                uiOptions |= View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
-                uiOptions |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
-                uiOptions |= View.SYSTEM_UI_FLAG_FULLSCREEN;
-                uiOptions |= View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-                getWindow().getDecorView().setSystemUiVisibility(uiOptions);
-            }
-        } else {
-            ((ViewGroup) getWindow().getDecorView()).removeView(playerRoot);
-            playerParent.addView(playerRoot);
-            llLayoutParent.addView(llLayout);
-        }
     }
 }
