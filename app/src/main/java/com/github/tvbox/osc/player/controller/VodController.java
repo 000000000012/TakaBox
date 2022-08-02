@@ -535,7 +535,13 @@ public class VodController extends BaseController {
         if (super.onKeyEvent(event)) {
             return true;
         }
+        int keyCode = event.getKeyCode();
+        int action = event.getAction();
         if (isBottomVisible()) {
+            myHandle.postDelayed(myRunnable, myHandleSeconds);
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP ) {
+                return true;
+            }
             return super.dispatchKeyEvent(event);
         }
         if (action == KeyEvent.ACTION_DOWN) {
@@ -550,7 +556,7 @@ public class VodController extends BaseController {
                     return true;
                 }
 //            } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {   // takagen99 : Up to show
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode== KeyEvent.KEYCODE_MENU) {
                 if (!isBottomVisible()) {
                     showBottom();
 
