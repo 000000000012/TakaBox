@@ -528,9 +528,7 @@ public class VodController extends BaseController {
 
     @Override
     public boolean onKeyEvent(KeyEvent event) {
-        int keyCode = event.getKeyCode();
-        int action = event.getAction();
-        boolean isInPlayback = isInPlaybackState();
+       
 
         if (super.onKeyEvent(event)) {
             return true;
@@ -544,6 +542,7 @@ public class VodController extends BaseController {
             }
             return super.dispatchKeyEvent(event);
         }
+		boolean isInPlayback = isInPlaybackState();
         if (action == KeyEvent.ACTION_DOWN) {
             if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                 if (isInPlayback) {
@@ -561,12 +560,12 @@ public class VodController extends BaseController {
                     showBottom();
 
                     // takagen99 : Hide after 10 seconds
-                    //new Handler().postDelayed(new Runnable() {
-                    //    @Override
-                    //    public void run() {
-                    //        hideBottom();
-                    //    }
-                    //}, 10000);
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            hideBottom();
+                        }
+                    }, 10000);
 
                     return true;
                 }
@@ -588,12 +587,12 @@ public class VodController extends BaseController {
             showBottom();
 
             // takagen99 : Hide after 10 seconds
-            //new Handler().postDelayed(new Runnable() {
-            //    @Override
-            //    public void run() {
-            //        hideBottom();
-            //    }
-            //}, 10000);
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    hideBottom();
+                }
+            }, 10000);
 
         } else {
             hideBottom();
