@@ -277,13 +277,9 @@ public class DetailActivity extends BaseActivity {
             public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
                 FastClickCheckUtil.check(view);
                 if (vodInfo != null && vodInfo.seriesMap.get(vodInfo.playFlag).size() > 0) {
-                    boolean reload = false;
-                    if (index != lastSeriesFocusIndex) {
-                        if(lastSeriesFocusIndex >= 0) {
-                            seriesAdapter.getData().get(lastSeriesFocusIndex).selected = false;
-                            seriesAdapter.notifyItemChanged(lastSeriesFocusIndex);
-                        }
-                        lastSeriesFocusIndex = index;
+                    if (vodInfo.playIndex != position) {
+                        seriesAdapter.getData().get(vodInfo.playIndex).selected = false;
+                        seriesAdapter.notifyItemChanged(vodInfo.playIndex);
                         seriesAdapter.getData().get(position).selected = true;
                         seriesAdapter.notifyItemChanged(position);
                         vodInfo.playIndex = position;
@@ -478,13 +474,16 @@ public class DetailActivity extends BaseActivity {
             if (event.obj != null) {
                 if (event.obj instanceof Integer) {
                     int index = (int) event.obj;
-                    // if (index != vodInfo.playIndex) {
-                    seriesAdapter.getData().get(vodInfo.playIndex).selected = false;
-                    seriesAdapter.notifyItemChanged(vodInfo.playIndex);
-                    seriesAdapter.getData().get(index).selected = true;
-                    seriesAdapter.notifyItemChanged(index);
-                    mGridView.setSelection(index);
-                    vodInfo.playIndex = index;
+                    if (index != lastSeriesFocusIndex) {
+                        if(lastSeriesFocusIndex >= 0) {
+                            seriesAdapter.getData().get(lastSeriesFocusIndex).selected = false;
+                            seriesAdapter.notifyItemChanged(lastSeriesFocusIndex);
+                        }
+                        lastSeriesFocusIndex = index;
+                        seriesAdapter.getData().get(index).selected = true;
+                        seriesAdapter.notifyItemChanged(index);
+                        mGridView.setSelection(index);
+                        vodInfo.playIndex = index;
                     //保存历史
                     insertVod(sourceKey, vodInfo);
                     // }
