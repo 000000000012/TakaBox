@@ -486,7 +486,7 @@ public class DetailActivity extends BaseActivity {
                         vodInfo.playIndex = index;
                     //保存历史
                     insertVod(sourceKey, vodInfo);
-                    // }
+                    }
                 } else if (event.obj instanceof JSONObject) {
                     vodInfo.playerCfg = ((JSONObject) event.obj).toString();
                     //保存历史
