@@ -536,7 +536,6 @@ public class VodController extends BaseController {
         int keyCode = event.getKeyCode();
         int action = event.getAction();
         if (isBottomVisible()) {
-            myHandle.postDelayed(myRunnable, myHandleSeconds);
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP ) {
                 return true;
             }
