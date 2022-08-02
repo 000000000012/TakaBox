@@ -182,6 +182,7 @@ public class VodController extends BaseController {
                 hideBottom();
             }
         });
+
         mNextBtn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -282,6 +283,20 @@ public class VodController extends BaseController {
                     listener.replay(false);
                     view.requestFocus();
                     // hideBottom();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+//        增加播放页面片头片尾时间重置
+        findViewById(R.id.play_time_reset).setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    mPlayerConfig.put("et", 0);
+                    mPlayerConfig.put("st", 0);
+                    updatePlayerCfgView();
+                    listener.updatePlayerCfg();
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
